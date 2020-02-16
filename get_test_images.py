@@ -2,7 +2,7 @@ import urllib.request
 import os
 import argparse
 
-GOOGLE_CLOUD_IMAGE_BUCKET = 'https://storage.googleapis.com/tfjs-models/assets/posenet/'
+GOOGLE_CLOUD_IMAGE_BUCKET = 'http://storage.googleapis.com/tfjs-models/assets/posenet/'
 
 TEST_IMAGES = [
   'frisbee.jpg',
