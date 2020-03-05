@@ -3,9 +3,9 @@ import cv2
 import time
 import argparse
 import os
+import numpy as np
 
 import posenet
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=int, default=101)
@@ -15,6 +15,48 @@ parser.add_argument('--image_dir', type=str, default='./images')
 parser.add_argument('--output_dir', type=str, default='./output')
 args = parser.parse_args()
 
+def return_keypoints(img):
+    """
+    Take in a PIL image. Convert to a cv2 image, pass into the model, return
+    keypoints for shoulders and hips.
+    """
+
+    # Convert PIL image to cv2 image
+    pil_image = img.convert('RGB') 
+    opencv_image = np.array(pil_image) 
+    opencv_image = opencv_image[:, :, ::-1].copy() 
+
+    # Open TensorFlow session
+    with tf.Session() as sess:
+        model_cfg, model_outputs = posenet.load_model(101, sess)
+        output_stride = model_cfg['output_stride']
+
+        input_image, draw_image, output_scale = posenet.process_input(opencv_image)
+
+        heatmaps_result, offsets_result, displacement_fwd_result, displacement_bwd_result = sess.run(
+            model_outputs,
+            feed_dict={'image:0': input_image}
+        )
+
+        pose_scores, keypoint_scores, keypoint_coords = posenet.decode_multiple_poses(
+            heatmaps_result.squeeze(axis=0),
+            offsets_result.squeeze(axis=0),
+            displacement_fwd_result.squeeze(axis=0),
+            displacement_bwd_result.squeeze(axis=0),
+            output_stride=output_stride,
+            max_pose_detections=10,
+            min_pose_score=0.25)
+
+        keypoint_coords *= output_scale
+
+        # print(keypoint_scores[0, :])
+        # print(keypoint_coords[0, :, :])
+        scores_and_coords = {}
+        keypoint_nums = [5, 6, 11, 12]
+        for ki, (s, c) in enumerate(zip(keypoint_scores[0, keypoint_nums], keypoint_coords[0, keypoint_nums, :])):
+            # print('Keypoint %s, score = %f, coord = %s' % (posenet.PART_NAMES[keypoint_nums[ki]], s, c))
+            scores_and_coords[posenet.PART_NAMES[keypoint_nums[ki]]] = c
+        return scores_and_coords
 
 def main():
 
